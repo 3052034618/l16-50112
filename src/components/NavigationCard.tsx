@@ -1,4 +1,6 @@
-import { Navigation, MapPin, Clock, Footprints, Bike } from 'lucide-react';
+import { useState } from 'react';
+import { Navigation, MapPin, Clock, Footprints, Bike, X, ExternalLink } from 'lucide-react';
+import Modal from './Modal';
 
 interface NavigationCardProps {
   from: string;
@@ -17,8 +19,27 @@ export default function NavigationCard({
   toLabel = '目的地',
   stage,
 }: NavigationCardProps) {
+  const [showMapModal, setShowMapModal] = useState(false);
   const estimatedTime = Math.round(distance * 15);
   const isPickup = stage === 'pickup';
+
+  const openMap = (type: 'amap' | 'baidu') => {
+    const fromEncoded = encodeURIComponent(from);
+    const toEncoded = encodeURIComponent(to);
+
+    if (type === 'amap') {
+      window.open(
+        `https://uri.amap.com/navigation?from=${fromEncoded}&to=${toEncoded}&mode=bus&src=campusrun`,
+        '_blank'
+      );
+    } else {
+      window.open(
+        `https://api.map.baidu.com/direction?origin=${fromEncoded}&destination=${toEncoded}&mode=transit&src=campusrun`,
+        '_blank'
+      );
+    }
+    setShowMapModal(false);
+  };
 
   return (
     <div className={`rounded-2xl overflow-hidden shadow-card ${
@@ -32,7 +53,11 @@ export default function NavigationCard({
               {isPickup ? '前往取货点' : '前往送达地址'}
             </span>
           </div>
-          <button className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-full text-sm font-medium transition-colors">
+          <button
+            onClick={() => setShowMapModal(true)}
+            className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5"
+          >
+            <Navigation className="w-4 h-4" />
             开始导航
           </button>
         </div>
@@ -124,6 +149,58 @@ export default function NavigationCard({
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={showMapModal}
+        onClose={() => setShowMapModal(false)}
+        title="选择地图导航"
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-gray-500 mb-4">
+            选择下方地图应用，查看详细路线和导航
+          </p>
+
+          <button
+            onClick={() => openMap('amap')}
+            className="w-full flex items-center gap-4 p-4 border border-gray-200 rounded-xl hover:border-primary-300 hover:bg-primary-50 transition-all group"
+          >
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-lg group-hover:scale-110 transition-transform">
+              高
+            </div>
+            <div className="flex-1 text-left">
+              <p className="font-medium text-gray-900">高德地图</p>
+              <p className="text-sm text-gray-500">公交、步行路线规划</p>
+            </div>
+            <ExternalLink className="w-5 h-5 text-gray-400 group-hover:text-primary-500 transition-colors" />
+          </button>
+
+          <button
+            onClick={() => openMap('baidu')}
+            className="w-full flex items-center gap-4 p-4 border border-gray-200 rounded-xl hover:border-secondary-300 hover:bg-secondary-50 transition-all group"
+          >
+            <div className="w-12 h-12 bg-gradient-to-br from-secondary-500 to-secondary-600 rounded-xl flex items-center justify-center text-white font-bold text-lg group-hover:scale-110 transition-transform">
+              百
+            </div>
+            <div className="flex-1 text-left">
+              <p className="font-medium text-gray-900">百度地图</p>
+              <p className="text-sm text-gray-500">详细街景和实时路况</p>
+            </div>
+            <ExternalLink className="w-5 h-5 text-gray-400 group-hover:text-secondary-500 transition-colors" />
+          </button>
+
+          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+            <p className="text-xs text-gray-500">
+              <span className="font-medium text-gray-700">导航信息：</span>
+              <br />
+              起点：{from}
+              <br />
+              终点：{to}
+              <br />
+              全程约 {distance.toFixed(1)} 公里，预计 {estimatedTime} 分钟
+            </p>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -34,7 +34,7 @@ export default function RunnerCenter() {
   const runnerProfile = currentUser ? getRunnerProfile(currentUser.id) : null;
   const isRunner = currentUser?.role === 'runner' && runnerProfile?.status === 'approved';
   const isPending = runnerProfile?.status === 'pending';
-  const isNewRunner = runnerProfile?.completedOrders && runnerProfile.completedOrders < 5;
+  const isNewRunner = isRunner && (runnerProfile?.completedOrders ?? 0) < 5;
 
   const recommendedOrders = useMemo(() => {
     const pendingOrders = orders.filter((o) => o.status === 'pending');
@@ -43,7 +43,8 @@ export default function RunnerCenter() {
     }
 
     const rating = runnerProfile.rating || 0;
-    const isNew = runnerProfile.completedOrders < 5;
+    const completedCount = runnerProfile.completedOrders ?? 0;
+    const isNew = completedCount < 5;
 
     return pendingOrders
       .map((order) => {
@@ -53,7 +54,7 @@ export default function RunnerCenter() {
         const distance = order.distance || 1;
         const distanceScore = Math.max(0, (3 - distance) / 3) * 40;
         score += distanceScore;
-        if (distance < 0.8) {
+        if (distance < 1) {
           reasons.push('距离近');
         }
 
@@ -72,9 +73,11 @@ export default function RunnerCenter() {
           score += 10;
         }
 
-        if (isNew && order.reward >= 5 && order.reward <= 8) {
+        if (isNew) {
           score += 15;
-          reasons.push('新人友好');
+          if (order.reward >= 3) {
+            reasons.push('新人友好');
+          }
         }
 
         if (order.type === 'express') {
