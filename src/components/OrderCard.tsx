@@ -60,19 +60,27 @@ export default function OrderCard({ order, showPublisher = false }: OrderCardPro
           </div>
         </div>
 
-        <p className="text-gray-600 text-sm mb-4 line-clamp-2">{order.description}</p>
+        <p className="text-gray-600 text-sm mb-4 line-clamp-2">{order.description || (isExpress && order.expressNo ? `快递单号: ${order.expressNo}` : '')}</p>
 
         <div className="space-y-2 mb-4">
           <div className="flex items-center gap-2 text-sm text-gray-500">
-            <MapPin className="w-4 h-4 text-primary-400" />
+            <MapPin className="w-4 h-4 text-primary-400 flex-shrink-0" />
             <span className="truncate">取货: {order.pickupLocation}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-500">
-            <MapPin className="w-4 h-4 text-secondary-400" />
+            <MapPin className="w-4 h-4 text-secondary-400 flex-shrink-0" />
             <span className="truncate">送达: {order.deliveryAddress}</span>
           </div>
+          {isExpress && order.expressNo && (
+            <div className="flex items-center gap-2 text-sm">
+              <div className="w-4 h-4 flex items-center justify-center flex-shrink-0">
+                <span className="text-xs font-bold text-info">#</span>
+              </div>
+              <span className="text-info font-mono font-medium">{order.expressNo}</span>
+            </div>
+          )}
           <div className="flex items-center gap-2 text-sm text-gray-500">
-            <Clock className="w-4 h-4 text-warning" />
+            <Clock className="w-4 h-4 text-warning flex-shrink-0" />
             <span>取件时间: {formatDate(order.pickupTime)}</span>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Package,
   Star,
@@ -9,12 +9,17 @@ import {
   Shield,
   UserCheck,
   Award,
+  Sparkles,
+  Crown,
+  Target,
+  Rocket,
 } from 'lucide-react';
 import OrderCard from '../components/OrderCard';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
 import { useAppStore } from '../store/useAppStore';
 import { formatMoney } from '../utils';
+import type { Order } from '../types';
 
 export default function RunnerCenter() {
   const { currentUser, orders, users, getRunnerProfile, getReviewsForUser, applyRunner, runnerProfiles } = useAppStore();
@@ -29,6 +34,61 @@ export default function RunnerCenter() {
   const runnerProfile = currentUser ? getRunnerProfile(currentUser.id) : null;
   const isRunner = currentUser?.role === 'runner' && runnerProfile?.status === 'approved';
   const isPending = runnerProfile?.status === 'pending';
+  const isNewRunner = runnerProfile?.completedOrders && runnerProfile.completedOrders < 5;
+
+  const recommendedOrders = useMemo(() => {
+    const pendingOrders = orders.filter((o) => o.status === 'pending');
+    if (!runnerProfile || !isRunner) {
+      return pendingOrders.map(order => ({ order, score: 0, reasons: [] as string[] }));
+    }
+
+    const rating = runnerProfile.rating || 0;
+    const isNew = runnerProfile.completedOrders < 5;
+
+    return pendingOrders
+      .map((order) => {
+        let score = 0;
+        const reasons: string[] = [];
+
+        const distance = order.distance || 1;
+        const distanceScore = Math.max(0, (3 - distance) / 3) * 40;
+        score += distanceScore;
+        if (distance < 0.8) {
+          reasons.push('距离近');
+        }
+
+        const rewardScore = Math.min(40, (order.reward / 15) * 40);
+        score += rewardScore;
+        if (order.reward >= 8) {
+          reasons.push('高报酬');
+        }
+
+        if (rating >= 4.5) {
+          score += 20;
+          if (order.reward >= 10) {
+            reasons.push('优质跑手专属');
+          }
+        } else if (rating >= 4.0) {
+          score += 10;
+        }
+
+        if (isNew && order.reward >= 5 && order.reward <= 8) {
+          score += 15;
+          reasons.push('新人友好');
+        }
+
+        if (order.type === 'express') {
+          score += 5;
+        }
+
+        return {
+          order,
+          score: Math.round(score),
+          reasons,
+        };
+      })
+      .sort((a, b) => b.score - a.score);
+  }, [orders, runnerProfile, isRunner]);
 
   const availableOrders = orders.filter((o) => o.status === 'pending');
   const ongoingOrders = orders.filter(
@@ -178,10 +238,69 @@ export default function RunnerCenter() {
         {activeTab === 'available' && (
           <div className="space-y-4">
             {isRunner ? (
-              availableOrders.length > 0 ? (
-                availableOrders.map((order) => (
-                  <OrderCard key={order.id} order={order} showPublisher />
-                ))
+              recommendedOrders.length > 0 ? (
+                <>
+                  {isNewRunner && (
+                    <div className="bg-gradient-to-r from-secondary-50 to-primary-50 rounded-xl p-4 border border-secondary-200 mb-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-secondary-500 to-primary-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Rocket className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">新人跑手专属</p>
+                          <p className="text-sm text-gray-600">
+                            为你推荐了适合新手的简单订单，完成5单后可解锁更多高报酬订单
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {runnerProfile && runnerProfile.rating >= 4.5 && recommendedOrders.length > 0 && (
+                    <div className="bg-gradient-to-r from-warning/20 to-primary-50 rounded-xl p-4 border border-warning/30 mb-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-warning to-warning/70 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Crown className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">优质跑手特权</p>
+                          <p className="text-sm text-gray-600">
+                            你的信誉评分 {runnerProfile.rating.toFixed(1)} 分，优先展示高报酬订单
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {recommendedOrders.map((item, index) => (
+                    <div
+                      key={item.order.id}
+                      className="relative animate-slide-up"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+                      {item.reasons.length > 0 && (
+                        <div className="absolute -top-2 left-4 z-10 flex gap-1.5">
+                          {item.reasons.slice(0, 2).map((reason, i) => (
+                            <span
+                              key={reason}
+                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-medium rounded-full shadow-sm ${
+                                i === 0
+                                  ? 'bg-gradient-to-r from-primary-500 to-secondary-500 text-white'
+                                  : 'bg-white text-gray-600 border border-gray-200'
+                              }`}
+                            >
+                              {i === 0 && <Sparkles className="w-3 h-3" />}
+                              {reason}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="pt-2">
+                        <OrderCard order={item.order} showPublisher />
+                      </div>
+                    </div>
+                  ))}
+                </>
               ) : (
                 <EmptyState icon={<Package className="w-12 h-12" />} text="暂无可接订单" />
               )

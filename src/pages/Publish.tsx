@@ -37,9 +37,13 @@ export default function Publish() {
       return;
     }
 
+    const orderTitle = type === 'express' && formData.expressSite && formData.expressNo
+      ? `代取${formData.expressSite}快递（尾号${formData.expressNo.slice(-4)}）`
+      : formData.title;
+
     publishOrder({
       type,
-      title: formData.title,
+      title: orderTitle,
       description: formData.description,
       pickupLocation: formData.pickupLocation,
       deliveryAddress: formData.deliveryAddress,
@@ -177,13 +181,45 @@ export default function Publish() {
 
               {type === 'express' ? (
                 <>
-                  <FormField
-                    icon={<Package className="w-5 h-5" />}
-                    label="快递站点"
-                    placeholder="如：东校区菜鸟驿站"
-                    value={formData.expressSite}
-                    onChange={(v) => handleChange('expressSite', v)}
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">快递站点</label>
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      {['东校区菜鸟驿站', '西校区快递中心', '南校区快递点', '北校区邮政点'].map((site) => (
+                        <button
+                          key={site}
+                          onClick={() => {
+                            handleChange('expressSite', site);
+                            handleChange('pickupLocation', site);
+                          }}
+                          className={`p-3 text-sm rounded-xl border-2 transition-all text-left ${
+                            formData.expressSite === site
+                              ? 'border-primary-500 bg-primary-50 text-primary-700'
+                              : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                          }`}
+                        >
+                          {site}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                        <Package className="w-5 h-5" />
+                      </div>
+                      <input
+                        type="text"
+                        value={formData.expressSite}
+                        onChange={(e) => {
+                          handleChange('expressSite', e.target.value);
+                          if (e.target.value) {
+                            handleChange('pickupLocation', e.target.value);
+                          }
+                        }}
+                        placeholder="或输入其他快递站点"
+                        className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-primary-500 focus:bg-white focus:outline-none transition-colors"
+                      />
+                    </div>
+                  </div>
+
                   <FormField
                     icon={<FileText className="w-5 h-5" />}
                     label="快递单号"
@@ -191,6 +227,16 @@ export default function Publish() {
                     value={formData.expressNo}
                     onChange={(v) => handleChange('expressNo', v)}
                   />
+
+                  <div className="bg-gradient-to-r from-primary-50 to-secondary-50 rounded-xl p-4">
+                    <p className="text-sm text-gray-600 mb-2">自动生成标题</p>
+                    <p className="font-medium text-gray-900">
+                      {formData.expressSite && formData.expressNo
+                        ? `代取${formData.expressSite}快递（尾号${formData.expressNo.slice(-4)}）`
+                        : '填写快递站点和单号后自动生成'}
+                    </p>
+                  </div>
+
                   <FormField
                     icon={<FileText className="w-5 h-5" />}
                     label="备注说明（选填）"

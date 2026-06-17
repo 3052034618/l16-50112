@@ -185,24 +185,27 @@ export default function AdminDashboard() {
       </div>
 
       <div className="bg-white rounded-2xl shadow-card overflow-hidden">
-        <div className="p-5 border-b border-gray-100">
+        <div className="p-5 border-b border-gray-100 flex items-center justify-between">
           <h3 className="font-semibold text-gray-900">最新订单</h3>
+          <div className="text-sm text-gray-500">
+            共 {orders.length} 单，进行中 {orders.filter((o) => ['accepted', 'picked', 'delivering'].includes(o.status)).length} 单
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  订单号
+                  订单信息
                 </th>
                 <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  类型
-                </th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  发布者
+                  发布者 / 跑手
                 </th>
                 <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   报酬
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  履约进度
                 </th>
                 <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   状态
@@ -215,30 +218,79 @@ export default function AdminDashboard() {
             <tbody className="divide-y divide-gray-100">
               {recentOrders.map((order) => {
                 const publisher = users.find((u) => u.id === order.publisherId);
+                const runner = order.runnerId ? users.find((u) => u.id === order.runnerId) : null;
+                const progress = getProgressInfo(order.status);
                 return (
                   <tr key={order.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-4 whitespace-nowrap">
-                      <span className="font-mono text-sm text-gray-900">{order.id}</span>
+                    <td className="px-5 py-4">
+                      <div>
+                        <p className="font-medium text-gray-900 text-sm">{order.title}</p>
+                        {order.type === 'express' && order.expressNo && (
+                          <p className="text-xs text-gray-500 font-mono mt-0.5">
+                            {order.expressNo} · {order.expressSite}
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-400 mt-1">
+                          {order.type === 'express' ? '代取快递' : '跑腿代买'}
+                        </p>
+                      </div>
                     </td>
-                    <td className="px-5 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-900">
-                        {order.type === 'express' ? '代取快递' : '跑腿代买'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <img
-                          src={publisher?.avatar}
-                          alt=""
-                          className="w-8 h-8 rounded-full"
-                        />
-                        <span className="text-sm text-gray-900">{publisher?.username}</span>
+                    <td className="px-5 py-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-400 w-8">发布</span>
+                          <img
+                            src={publisher?.avatar}
+                            alt=""
+                            className="w-5 h-5 rounded-full"
+                          />
+                          <span className="text-sm text-gray-700">{publisher?.username}</span>
+                        </div>
+                        {runner && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400 w-8">跑手</span>
+                            <img
+                              src={runner?.avatar}
+                              alt=""
+                              className="w-5 h-5 rounded-full"
+                            />
+                            <span className="text-sm text-gray-700">{runner?.username}</span>
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-5 py-4 whitespace-nowrap">
                       <span className="text-sm font-medium text-primary-600">
                         {formatMoney(order.reward)}
                       </span>
+                    </td>
+                    <td className="px-5 py-4 whitespace-nowrap w-64">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 flex items-center gap-0.5">
+                          {progress.steps.map((step, i) => (
+                            <div key={i} className="flex-1 relative">
+                              <div
+                                className={`h-1.5 rounded-full ${
+                                  step.completed
+                                    ? 'bg-success'
+                                    : step.active
+                                    ? 'bg-gradient-to-r from-primary-500 to-secondary-500 animate-pulse'
+                                    : 'bg-gray-200'
+                                }`}
+                              />
+                              <p
+                                className={`text-xs mt-1.5 ${
+                                  step.completed || step.active
+                                    ? 'text-gray-600 font-medium'
+                                    : 'text-gray-400'
+                                }`}
+                              >
+                                {step.label}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </td>
                     <td className="px-5 py-4 whitespace-nowrap">
                       <span
@@ -307,4 +359,26 @@ function getStatusColor(status: string): string {
     disputed: 'bg-red-100 text-red-800',
   };
   return map[status] || 'bg-gray-100 text-gray-600';
+}
+
+function getProgressInfo(status: string) {
+  const steps = [
+    { label: '发布', key: 'pending' },
+    { label: '接单', key: 'accepted' },
+    { label: '取货', key: 'picked' },
+    { label: '配送', key: 'delivering' },
+    { label: '完成', key: 'completed' },
+  ];
+
+  const statusOrder = ['pending', 'accepted', 'picked', 'delivering', 'completed'];
+  const currentIndex = statusOrder.indexOf(status);
+
+  return {
+    steps: steps.map((step, i) => ({
+      ...step,
+      completed: currentIndex > i,
+      active: currentIndex === i,
+    })),
+    currentIndex,
+  };
 }

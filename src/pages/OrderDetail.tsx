@@ -15,6 +15,7 @@ import Timeline from '../components/Timeline';
 import Button from '../components/Button';
 import Rating from '../components/Rating';
 import Modal from '../components/Modal';
+import NavigationCard from '../components/NavigationCard';
 import { useAppStore } from '../store/useAppStore';
 import { formatMoney, formatDateTime, getOrderStatusText, getOrderTypeText } from '../utils';
 import type { OrderStatus } from '../types';
@@ -206,6 +207,30 @@ export default function OrderDetail() {
           />
         </div>
 
+        {isRunner && ['accepted', 'picked', 'delivering'].includes(order.status) && (
+          <div className="mb-6">
+            {order.status === 'delivering' ? (
+              <NavigationCard
+                from={order.pickupLocation}
+                to={order.deliveryAddress}
+                distance={(order.distance || 1) * 0.8}
+                fromLabel="取货点"
+                toLabel="送达地址"
+                stage="delivery"
+              />
+            ) : (
+              <NavigationCard
+                from="我的位置"
+                to={order.pickupLocation}
+                distance={order.distance || 1}
+                fromLabel="当前位置"
+                toLabel={isExpress ? '快递站点' : '购买地点'}
+                stage="pickup"
+              />
+            )}
+          </div>
+        )}
+
         <div className="bg-white rounded-2xl shadow-card p-6 mb-6">
           <h3 className="font-semibold text-gray-900 mb-4">任务详情</h3>
           
@@ -231,12 +256,19 @@ export default function OrderDetail() {
                 <p className="font-medium text-gray-900">{formatDateTime(order.pickupTime)}</p>
               </div>
             </div>
-            {isExpress && order.expressNo && (
-              <div className="flex items-start gap-3">
-                <Package className="w-5 h-5 text-info mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-gray-500">快递单号</p>
-                  <p className="font-medium text-gray-900 font-mono">{order.expressNo}</p>
+            {isExpress && (
+              <div className="bg-gradient-to-r from-info/10 to-secondary-50 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">快递信息</span>
+                  <span className="text-xs px-2 py-0.5 bg-info/20 text-info rounded-full">
+                    {order.expressSite || '快递'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Package className="w-5 h-5 text-info" />
+                  <span className="font-mono font-bold text-lg text-gray-900">
+                    {order.expressNo || '暂无单号'}
+                  </span>
                 </div>
               </div>
             )}

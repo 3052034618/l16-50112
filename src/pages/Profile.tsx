@@ -13,11 +13,49 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   FileText,
+  ShoppingBag,
 } from 'lucide-react';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
 import { useAppStore } from '../store/useAppStore';
 import { formatMoney, formatDateTime, getOrderStatusText } from '../utils';
+import type { OrderStatus } from '../types';
+
+const getStatusColor = (status: OrderStatus) => {
+  const colors: Record<OrderStatus, string> = {
+    pending: 'bg-gray-100 text-gray-600',
+    accepted: 'bg-blue-100 text-blue-600',
+    picked: 'bg-purple-100 text-purple-600',
+    delivering: 'bg-secondary-100 text-secondary-600',
+    completed: 'bg-green-100 text-green-600',
+    cancelled: 'bg-red-100 text-red-600',
+    disputed: 'bg-yellow-100 text-yellow-600',
+  };
+  return colors[status];
+};
+
+const getStatusText = (status: OrderStatus) => {
+  return getOrderStatusText(status);
+};
+
+const getOrderProgress = (status: OrderStatus) => {
+  const steps = [
+    { label: '已发布', key: 'pending' },
+    { label: '已接单', key: 'accepted' },
+    { label: '已取货', key: 'picked' },
+    { label: '配送中', key: 'delivering' },
+    { label: '已完成', key: 'completed' },
+  ];
+
+  const statusOrder: OrderStatus[] = ['pending', 'accepted', 'picked', 'delivering', 'completed'];
+  const currentIndex = statusOrder.indexOf(status);
+
+  return steps.map((step, i) => ({
+    ...step,
+    completed: currentIndex > i,
+    active: currentIndex === i,
+  }));
+};
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -122,8 +160,14 @@ export default function Profile() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-card overflow-hidden mb-6">
-          <div className="p-4 border-b border-gray-100">
+          <div className="p-4 border-b border-gray-100 flex items-center justify-between">
             <h3 className="font-semibold text-gray-900">我的发布</h3>
+            <Link
+              to="/profile/orders"
+              className="text-sm text-primary-500 hover:text-primary-600"
+            >
+              查看全部
+            </Link>
           </div>
           <div className="grid grid-cols-4 divide-x divide-gray-100">
             <OrderStat label="全部" value={myOrders.length} />
@@ -144,15 +188,87 @@ export default function Profile() {
               value={myOrders.filter((o) => o.status === 'completed').length}
             />
           </div>
-          <div className="p-4 border-t border-gray-100">
-            <Link
-              to="/profile/orders"
-              className="flex items-center justify-between text-sm text-gray-600 hover:text-primary-500 transition-colors"
-            >
-              <span>查看全部订单</span>
-              <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
+
+          {myOrders.length > 0 && (
+            <div className="border-t border-gray-100">
+              {myOrders.slice(0, 3).map((order) => {
+                const isExpress = order.type === 'express';
+                const progressSteps = getOrderProgress(order.status);
+                return (
+                  <Link
+                    key={order.id}
+                    to={`/order/${order.id}`}
+                    className="block p-4 border-b border-gray-50 last:border-b-0 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                            isExpress
+                              ? 'bg-primary-100 text-primary-600'
+                              : 'bg-secondary-100 text-secondary-600'
+                          }`}
+                        >
+                          {isExpress ? (
+                            <Package className="w-4 h-4" />
+                          ) : (
+                            <ShoppingBag className="w-4 h-4" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900 text-sm line-clamp-1">
+                            {order.title}
+                          </p>
+                          {isExpress && order.expressNo && (
+                            <p className="text-xs text-gray-500 font-mono">
+                              {order.expressNo}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-primary-500">
+                          {formatMoney(order.reward)}
+                        </p>
+                        <span
+                          className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(
+                            order.status
+                          )}`}
+                        >
+                          {getStatusText(order.status)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      {progressSteps.map((step, i) => (
+                        <div key={i} className="flex-1">
+                          <div
+                            className={`h-1.5 rounded-full ${
+                              step.active
+                                ? 'bg-gradient-to-r from-primary-500 to-secondary-500'
+                                : step.completed
+                                ? 'bg-success'
+                                : 'bg-gray-200'
+                            } ${step.active ? 'animate-pulse' : ''}`}
+                          />
+                          <p
+                            className={`text-xs mt-1 ${
+                              step.completed || step.active
+                                ? 'text-gray-600'
+                                : 'text-gray-400'
+                            }`}
+                          >
+                            {step.label}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-2xl shadow-card overflow-hidden mb-6">
